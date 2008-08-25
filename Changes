@@ -1,0 +1,27 @@
+Revision history for Net-LDAP-Server-Test
+
+0.01    12 Oct 2007
+        First version, released on an unsuspecting world.
+
+0.02    4 Feb 2008
+        - no code changes, just bumped version to reflect patch accepted for
+          Net::LDAP::Server.
+
+0.03    9 July 2008
+        * new() now takes key/value pairs rather than single $data arg
+        * added auto_schema feature to enable add/update/delete with
+          in-memory Net::LDAP::Entry objects in server.
+
+0.04    10 July 2008
+        * bump mock sleep time at server fork() time to allow for some test failures.
+
+0.05    21 July 2008
+        * add active_directory mode
+        * change test port from 8080 to 10636
+
+0.06    22 July 2008
+        * reverse member/memberOf logic in AD mode to reflect how AD actually works.
+
+0.07    31 July 2008
+        * fix auto SID stuff in active_directory mode to correctly pack/unpack on all systems.
+
