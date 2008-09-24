@@ -10,6 +10,10 @@ To install this module, run the following commands:
     make test
     make install
 
+NOTE that if your system has iptables or other firewall set,
+that port 10636 may be inaccessible to the tests and they
+will fail.
+
 
 SUPPORT AND DOCUMENTATION
 
