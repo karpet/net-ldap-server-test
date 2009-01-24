@@ -25,3 +25,6 @@ Revision history for Net-LDAP-Server-Test
 0.07    31 July 2008
         * fix auto SID stuff in active_directory mode to correctly pack/unpack on all systems.
 
+0.08_01 23 Jan 2009
+        * dev release with some debugging on to help out Net::LDAP::Class
+

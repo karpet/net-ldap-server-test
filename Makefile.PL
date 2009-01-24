@@ -14,6 +14,7 @@ WriteMakefile(
         'IO::Select' => 0,
         'Net::LDAP::Server' => '0.3',
         'Net::LDAP'  => 0,
+        'Data::Dump' => 0,
 
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },

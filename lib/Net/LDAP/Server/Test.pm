@@ -5,8 +5,9 @@ use strict;
 use Carp;
 use IO::Select;
 use IO::Socket;
+use Data::Dump ();
 
-our $VERSION = '0.07';
+our $VERSION = '0.08_01';
 
 =head1 NAME
 
@@ -357,7 +358,10 @@ Only one user-level method is implemented: new().
         my $sid = shift;
         my (@unpack) = unpack( "H2 H2 n N V*", $sid );
         my ( $sid_rev, $num_auths, $id1, $id2, @ids ) = (@unpack);
-        return join( "-", "S", $sid_rev, ( $id1 << 32 ) + $id2, @ids );
+        my $string = join( "-", "S", $sid_rev, ( $id1 << 32 ) + $id2, @ids );
+        carp "sid    = " . Data::Dump::dump($sid);
+        carp "string = $string";
+        return $string;
     }
 
     sub _string2sid {
@@ -378,6 +382,9 @@ Only one user-level method is implemented: new().
         for my $i (@ids) {
             $sid .= pack( "I", $i );
         }
+
+        carp "sid    = " . Data::Dump::dump($sid);
+        carp "string = $string";
 
         return $sid;
     }
