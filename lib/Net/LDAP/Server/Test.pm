@@ -161,6 +161,7 @@ Only one user-level method is implemented: new().
                     $page_size = $asn->size;
 
                     if ( $ENV{LDAP_DEBUG} ) {
+                        warn "size   == $page_size";
                         warn "cookie == " . $asn->cookie;
                     }
 
@@ -229,7 +230,10 @@ Only one user-level method is implemented: new().
         # the $page_size -1 is because we're zero-based.
 
         if ( $ENV{LDAP_DEBUG} ) {
-            warn "found " . scalar(@results) . " total results\n";
+            warn "found "
+                . scalar(@results)
+                . " total results for filters:"
+                . Data::Dump::dump( \@filters );
 
             #warn Data::Dump::dump( \@results );
             if ($page_size) {
@@ -243,12 +247,12 @@ Only one user-level method is implemented: new().
                 warn "exceeded end of results\n";
             }
             @results = ();
-            
+
             # IMPORTANT!! must set pager cookie to false
             for my $control (@$controls) {
-                if ($control->isa('Net::LDAP::Control::Paged')) {
+                if ( $control->isa('Net::LDAP::Control::Paged') ) {
                     $control->cookie(undef);
-                    $control->value;  # IMPORTANT!! re-encode
+                    $control->value;    # IMPORTANT!! re-encode
                 }
             }
         }
@@ -274,6 +278,18 @@ Only one user-level method is implemented: new().
                 #warn Data::Dump::dump( \@results );
             }
 
+        }
+        
+        # special case. client is telling server to abort.
+        elsif ( defined $page_size && $page_size == 0 ) {
+
+            # IMPORTANT!! must set pager cookie to false
+            for my $control (@$controls) {
+                if ( $control->isa('Net::LDAP::Control::Paged') ) {
+                    $control->cookie(undef);
+                    $control->value;    # IMPORTANT!! re-encode
+                }
+            }
         }
 
         #warn "search results for " . Data::Dump::dump($reqData) . "\n: "
