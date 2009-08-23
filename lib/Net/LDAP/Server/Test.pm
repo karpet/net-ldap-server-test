@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.08_01';
+our $VERSION = '0.08_02';
 
 =head1 NAME
 
@@ -49,13 +49,18 @@ Only one user-level method is implemented: new().
     use strict;
     use warnings;
     use Carp;
-
-    #use Data::Dump qw( dump );
-
-    use Net::LDAP::Constant qw(LDAP_SUCCESS);
+    use Net::LDAP::Constant qw(
+        LDAP_SUCCESS
+        LDAP_CONTROL_PAGED
+        LDAP_OPERATIONS_ERROR
+        LDAP_UNWILLING_TO_PERFORM
+    );
     use Net::LDAP::Entry;
     use Net::LDAP::Filter;
     use Net::LDAP::FilterMatch;
+    use Net::LDAP::Control;
+    use Net::LDAP::ASN qw(LDAPRequest LDAPResponse);
+    use Convert::ASN1 qw(asn_read);
 
     use base 'Net::LDAP::Server';
     use fields qw( _flags );
@@ -67,6 +72,8 @@ Only one user-level method is implemented: new().
     };
 
     our %Data;    # package data lasts as long as $$ does.
+    our $Cookies = 0;
+    our %Searches;
 
     # constructor
     sub new {
@@ -108,14 +115,16 @@ Only one user-level method is implemented: new().
     sub _search_user_supplied_data {
         my ( $self, $reqData ) = @_;
 
-        #warn 'SEARCH USER DATA: ' . dump \@_;
+        # TODO??
+
+        #warn 'SEARCH USER DATA: ' . Data::Dump::dump \@_;
         return RESULT_OK, @{ $self->{_flags}->{data} };
     }
 
     sub _search_auto_schema_data {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'SEARCH SCHEMA: ' . dump \@_;
+        #warn 'SEARCH SCHEMA: ' . Data::Dump::dump \@_;
 
         my @results;
         my $base    = $reqData->{baseObject};
@@ -131,11 +140,54 @@ Only one user-level method is implemented: new().
             }
         }
 
-        #warn "stored Data: " . dump \%Data;
-        #warn "searching for " . dump \@filters;
+        #warn "stored Data: " . Data::Dump::dump \%Data;
+        #warn "searching for " . Data::Dump::dump \@filters;
+
+        # support paged results
+        my ( $page_size, $cookie, $controls, $offset );
+        if ( exists $reqMsg->{controls} ) {
+            for my $control ( @{ $reqMsg->{controls} } ) {
+
+                if ( $ENV{LDAP_DEBUG} ) {
+                    warn "control: " . Data::Dump::dump($control) . "\n";
+                }
+
+                if ( $control->{type} eq LDAP_CONTROL_PAGED ) {
+                    my $asn = Net::LDAP::Control->from_asn($control);
+
+                    if ( $ENV{LDAP_DEBUG} ) {
+                        warn "asn: " . Data::Dump::dump($asn) . "\n";
+                    }
+                    $page_size = $asn->size;
+
+                    if ( $ENV{LDAP_DEBUG} ) {
+                        warn "cookie == " . $asn->cookie;
+                    }
+
+                   # assign a cookie if this is the first page of paged search
+                    if ( !$asn->cookie ) {
+                        $asn->cookie( ++$Cookies );
+                        $asn->value;    # IMPORTANT!! encode value with cookie
+
+                        if ( $ENV{LDAP_DEBUG} ) {
+                            warn "no cookie assigned. setting to $Cookies";
+                        }
+
+                        # keep track of offset
+                        $Searches{ $asn->cookie } = 0;
+                    }
+
+                    $offset = $Searches{ $asn->cookie };
+                    $cookie = $asn->cookie;
+
+                    push( @$controls, $asn );
+                }
+            }
+        }
 
         # loop over all keys looking for match
-        for my $dn ( keys %Data ) {
+        # we sort in order for paged control to work
+    ENTRY: for my $dn ( sort keys %Data ) {
 
             next unless $dn =~ m/$base$/;
 
@@ -148,7 +200,7 @@ Only one user-level method is implemented: new().
 
             my $entry = $Data{$dn};
 
-            #warn "trying to match $dn : " . dump $entry;
+            #warn "trying to match $dn : " . Data::Dump::dump $entry;
 
             my $match = 0;
             for my $filter (@filters) {
@@ -165,19 +217,76 @@ Only one user-level method is implemented: new().
 
                 # clone the entry so that client cannot modify %Data
                 push( @results, $entry->clone );
+
             }
         }
 
-       #warn "search results for " . dump($reqData) . "\n: " . dump \@results;
+        # for paged results we find everything then take a slice.
+        # this is less how a Real Server would do it but does
+        # work for the simple case where we want to make sure our offset
+        # and page size are accurate and we're not returning the same results
+        # in multiple pages.
+        # the $page_size -1 is because we're zero-based.
 
-        return RESULT_OK, @results;
+        if ( $ENV{LDAP_DEBUG} ) {
+            warn "found " . scalar(@results) . " total results\n";
+
+            #warn Data::Dump::dump( \@results );
+            if ($page_size) {
+                warn "page_size == $page_size  offset == $offset\n";
+            }
+        }
+
+        if ( $page_size && $offset > $#results ) {
+
+            if ( $ENV{LDAP_DEBUG} ) {
+                warn "exceeded end of results\n";
+            }
+            @results = ();
+            
+            # IMPORTANT!! must set pager cookie to false
+            for my $control (@$controls) {
+                if ($control->isa('Net::LDAP::Control::Paged')) {
+                    $control->cookie(undef);
+                    $control->value;  # IMPORTANT!! re-encode
+                }
+            }
+        }
+        elsif ( $page_size && @results ) {
+
+            my $limit = $offset + $page_size - 1;
+            if ( $limit > $#results ) {
+                $limit = $#results;
+            }
+
+            if ( $ENV{LDAP_DEBUG} ) {
+                warn "slice \@results[ $offset .. $limit ]\n";
+            }
+            @results = @results[ $offset .. $limit ];
+
+            # update our global marker
+            $Searches{$cookie} = $limit + 1;
+
+            if ( $ENV{LDAP_DEBUG} ) {
+                warn "returning " . scalar(@results) . " total results\n";
+                warn "next offset start is $Searches{$cookie}\n";
+
+                #warn Data::Dump::dump( \@results );
+            }
+
+        }
+
+        #warn "search results for " . Data::Dump::dump($reqData) . "\n: "
+        # . Data::Dump::dump \@results;
+
+        return ( RESULT_OK, \@results, $controls );
 
     }
 
     sub _search_default_test_data {
         my ( $self, $reqData ) = @_;
 
-        #warn 'SEARCH DEFAULT: ' . dump \@_;
+        #warn 'SEARCH DEFAULT: ' . Data::Dump::dump \@_;
 
         my $base = $reqData->{'baseObject'};
 
@@ -251,7 +360,7 @@ Only one user-level method is implemented: new().
     sub add {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'ADD: ' . dump \@_;
+        #warn 'ADD: ' . Data::Dump::dump \@_;
 
         my $entry = Net::LDAP::Entry->new;
         my $key   = $reqData->{objectName};
@@ -272,7 +381,7 @@ Only one user-level method is implemented: new().
     sub modify {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'MODIFY: ' . dump \@_;
+        #warn 'MODIFY: ' . Data::Dump::dump \@_;
 
         my $key = $reqData->{object};
         if ( !exists $Data{$key} ) {
@@ -298,7 +407,7 @@ Only one user-level method is implemented: new().
     sub delete {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'DELETE: ' . dump \@_;
+        #warn 'DELETE: ' . Data::Dump::dump \@_;
 
         my $key = $reqData;
         if ( !exists $Data{$key} ) {
@@ -313,7 +422,7 @@ Only one user-level method is implemented: new().
     sub modifyDN {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn "modifyDN: " . dump \@_;
+        #warn "modifyDN: " . Data::Dump::dump \@_;
 
         my $oldkey = $reqData->{entry};
         my $newkey = join( ',', $reqData->{newrdn}, $reqData->{newSuperior} );
@@ -338,7 +447,7 @@ Only one user-level method is implemented: new().
     sub compare {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn "compare: " . dump \@_;
+        #warn "compare: " . Data::Dump::dump \@_;
 
         return RESULT_OK;
     }
@@ -346,7 +455,7 @@ Only one user-level method is implemented: new().
     sub abandon {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn "abandon: " . dump \@_;
+        #warn "abandon: " . Data::Dump::dump \@_;
 
         return RESULT_OK;
     }
@@ -359,8 +468,10 @@ Only one user-level method is implemented: new().
         my (@unpack) = unpack( "H2 H2 n N V*", $sid );
         my ( $sid_rev, $num_auths, $id1, $id2, @ids ) = (@unpack);
         my $string = join( "-", "S", $sid_rev, ( $id1 << 32 ) + $id2, @ids );
-        carp "sid    = " . Data::Dump::dump($sid);
-        carp "string = $string";
+        if ( $ENV{LDAP_DEBUG} ) {
+            carp "sid    = " . Data::Dump::dump($sid);
+            carp "string = $string";
+        }
         return $string;
     }
 
@@ -382,10 +493,10 @@ Only one user-level method is implemented: new().
         for my $i (@ids) {
             $sid .= pack( "I", $i );
         }
-
-        carp "sid    = " . Data::Dump::dump($sid);
-        carp "string = $string";
-
+        if ( $ENV{LDAP_DEBUG} ) {
+            carp "sid    = " . Data::Dump::dump($sid);
+            carp "string = $string";
+        }
         return $sid;
     }
 
@@ -402,6 +513,7 @@ Only one user-level method is implemented: new().
                         =~ s/-1234$/-$token_counter/;
                     $entry->add( 'primaryGroupToken' => $token_counter );
                     $entry->add( 'objectSID'         => "$group_sid_str" );
+                    $entry->add( 'distinguishedName' => $key );
 
                 }
                 else {
@@ -501,6 +613,145 @@ Only one user-level method is implemented: new().
 
         #Data::Dump::dump $data;
 
+    }
+
+    # override the default behaviour to support controls
+    sub handle {
+        my Net::LDAP::Server $self = shift;
+        my $socket = $self->{socket};
+
+        asn_read( $socket, my $pdu );
+
+        #print '-' x 80,"\n";
+        #print "Received:\n";
+        #Convert::ASN1::asn_dump(\*STDOUT,$pdu);
+        my $request = $LDAPRequest->decode($pdu);
+        my $mid     = $request->{'messageID'}
+            or return 1;
+
+        #print "messageID: $mid\n";
+        #use Data::Dumper; print Dumper($request);
+
+        my $reqType;
+        foreach my $type (@Net::LDAP::Server::reqTypes) {
+            if ( defined $request->{$type} ) {
+                $reqType = $type;
+                last;
+            }
+        }
+        my $respType = $Net::LDAP::Server::respTypes{$reqType}
+            or
+            return 1;   # if no response type is present hangup the connection
+
+        my $reqData = $request->{$reqType};
+
+        # here we can do something with the request of type $reqType
+        my $method = $Net::LDAP::Server::functions{$reqType};
+        my ( $result, $controls );
+        if ( $self->can($method) ) {
+            if ( $method eq 'search' ) {
+                my @entries;
+                eval {
+                    ( $result, @entries )
+                        = $self->search( $reqData, $request );
+                    if ( ref( $entries[0] ) eq 'ARRAY' ) {
+                        $controls = pop(@entries);
+                        @entries  = @{ shift(@entries) };
+
+                        #warn "got controls";
+                    }
+                };
+
+                # rethrow
+                if ($@) {
+                    croak $@;
+                }
+
+                foreach my $entry (@entries) {
+                    my $data;
+
+                    # default is to return a searchResEntry
+                    my $sResType = 'searchResEntry';
+                    if ( ref $entry eq 'Net::LDAP::Entry' ) {
+                        $data = $entry->{'asn'};
+                    }
+                    elsif ( ref $entry eq 'Net::LDAP::Reference' ) {
+                        $data     = $entry->{'asn'};
+                        $sResType = 'searchResRef';
+                    }
+                    else {
+                        $data = $entry;
+                    }
+
+                    my $response;
+
+                    #  is the full message specified?
+                    if ( defined $data->{'protocolOp'} ) {
+                        $response = $data;
+                        $response->{'messageID'} = $mid;
+                    }
+                    else {
+                        $response = {
+                            'messageID'  => $mid,
+                            'protocolOp' => { $sResType => $data },
+                        };
+                    }
+                    my $pdu = $LDAPResponse->encode($response);
+                    if ($pdu) {
+                        print $socket $pdu;
+                    }
+                    else {
+                        $result = undef;
+                        last;
+                    }
+                }
+            }
+            else {
+                eval { $result = $self->$method( $reqData, $request ) };
+            }
+            $result = Net::LDAP::Server::_operations_error() unless $result;
+        }
+        else {
+            $result = {
+                'matchedDN'    => '',
+                'errorMessage' => sprintf(
+                    "%s operation is not supported by %s",
+                    $method, ref $self
+                ),
+                'resultCode' => LDAP_UNWILLING_TO_PERFORM
+            };
+        }
+
+        # and now send the result to the client
+        print $socket _encode_result( $mid, $respType, $result, $controls );
+
+        return 0;
+    }
+
+    sub _encode_result {
+        my ( $mid, $respType, $result, $controls ) = @_;
+
+        my $response = {
+            'messageID'  => $mid,
+            'protocolOp' => { $respType => $result },
+        };
+        if ( defined $controls ) {
+            $response->{'controls'} = $controls;
+        }
+
+        #warn "response: " . Data::Dump::dump($response) . "\n";
+
+        my $pdu = $LDAPResponse->encode($response);
+
+        # if response encoding failed return the error
+        if ( !$pdu ) {
+            $response->{'protocolOp'}->{$respType}
+                = Net::LDAP::Server::_operations_error();
+            delete $response->{'controls'};    # just in case
+            $pdu = $LDAPResponse->encode($response);
+        }
+
+        return $pdu;
     }
 
 }    # end MyLDAPServer
