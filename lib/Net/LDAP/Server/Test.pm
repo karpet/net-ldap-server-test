@@ -248,6 +248,7 @@ Only one user-level method is implemented: new().
             @results = ();
 
             # IMPORTANT!! must set pager cookie to false
+            # to indicate no more results
             for my $control (@$controls) {
                 if ( $control->isa('Net::LDAP::Control::Paged') ) {
                     $control->cookie(undef);
