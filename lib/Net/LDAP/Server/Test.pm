@@ -229,10 +229,9 @@ Only one user-level method is implemented: new().
         # in multiple pages.
         # the $page_size -1 is because we're zero-based.
 
+        my $total_found = scalar(@results);
         if ( $ENV{LDAP_DEBUG} ) {
-            warn "found "
-                . scalar(@results)
-                . " total results for filters:"
+            warn "found $total_found total results for filters:"
                 . Data::Dump::dump( \@filters );
 
             #warn Data::Dump::dump( \@results );
@@ -271,6 +270,17 @@ Only one user-level method is implemented: new().
             # update our global marker
             $Searches{$cookie} = $limit + 1;
 
+            # if this was the very last result
+            # indicate that by undefining the cookie
+            if ( $total_found == $Searches{$cookie} ) {
+                for my $control (@$controls) {
+                    if ( $control->isa('Net::LDAP::Control::Paged') ) {
+                        $control->cookie(undef);
+                        $control->value;    # IMPORTANT!! re-encode
+                    }
+                }
+            }
+
             if ( $ENV{LDAP_DEBUG} ) {
                 warn "returning " . scalar(@results) . " total results\n";
                 warn "next offset start is $Searches{$cookie}\n";
@@ -279,7 +289,7 @@ Only one user-level method is implemented: new().
             }
 
         }
-        
+
         # special case. client is telling server to abort.
         elsif ( defined $page_size && $page_size == 0 ) {
 
