@@ -28,7 +28,7 @@ Revision history for Net-LDAP-Server-Test
 0.08_01 23 Jan 2009
         * dev release with some debugging on to help out Net::LDAP::Class
 
-0.08_02 xxx
+0.08    26 Aug 2009
         * make debugging messages optional with LDAP_DEBUG env var
         * add support for Net::LDAP::Control (specifically, Net::LDAP::Control::Paged)
 
