@@ -32,3 +32,6 @@ Revision history for Net-LDAP-Server-Test
         * make debugging messages optional with LDAP_DEBUG env var
         * add support for Net::LDAP::Control (specifically, Net::LDAP::Control::Paged)
 
+0.09    xxx
+        * wrap print to $socket handle in {} braces for perl 5.6.x
+

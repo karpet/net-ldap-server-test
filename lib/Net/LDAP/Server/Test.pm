@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 =head1 NAME
 
@@ -709,7 +709,7 @@ Only one user-level method is implemented: new().
                     }
                     my $pdu = $LDAPResponse->encode($response);
                     if ($pdu) {
-                        print $socket $pdu;
+                        print { $socket } $pdu;
                     }
                     else {
                         $result = undef;
@@ -734,7 +734,7 @@ Only one user-level method is implemented: new().
         }
 
         # and now send the result to the client
-        print $socket _encode_result( $mid, $respType, $result, $controls );
+        print { $socket } _encode_result( $mid, $respType, $result, $controls );
 
         return 0;
     }
