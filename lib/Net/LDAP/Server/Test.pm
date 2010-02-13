@@ -79,7 +79,7 @@ Only one user-level method is implemented: new().
     sub new {
         my ( $class, $sock, %args ) = @_;
         my $self = $class->SUPER::new($sock);
-        printf "Accepted connection from: %s\n", $sock->peerhost();
+        warn sprintf "Accepted connection from: %s\n", $sock->peerhost();
         $self->{_flags} = \%args;
         return $self;
     }
@@ -472,43 +472,45 @@ Only one user-level method is implemented: new().
     }
 
     my $token_counter = 100;
-    my $sid_str       = 'S-01-5-21-350811113-3086823889-3317782326-1234';
+    my $sid_str       = 'S-1-2-3-4-5-6-1234';
+
+    sub _get_server_sid_string { return $sid_str }
+
+    sub _string2sid {
+        my ($string) = @_;
+
+        my ( undef, $revision_level, $authority, @sub_authorities )
+            = split /-/, $string;
+        my $sub_authority_count = scalar @sub_authorities;
+
+        my $sid = pack 'C Vxx C V*', $revision_level, $authority,
+            $sub_authority_count, @sub_authorities;
+
+        if ( $ENV{LDAP_DEBUG} ) {
+            carp "sid    = " . join( '\\', unpack '(H2)*', $sid );
+            carp "string = $string";
+        }
+
+        return $sid;
+    }
 
     sub _sid2string {
-        my $sid = shift;
-        my (@unpack) = unpack( "H2 H2 n N V*", $sid );
-        my ( $sid_rev, $num_auths, $id1, $id2, @ids ) = (@unpack);
-        my $string = join( "-", "S", $sid_rev, ( $id1 << 32 ) + $id2, @ids );
+        my ($sid) = @_;
+
+        my ($revision_level,      $authority,
+            $sub_authority_count, @sub_authorities
+        ) = unpack 'C Vxx C V*', $sid;
+
+        die if $sub_authority_count != scalar @sub_authorities;
+
+        my $string = join '-', 'S', $revision_level, $authority,
+            @sub_authorities;
+
         if ( $ENV{LDAP_DEBUG} ) {
-            carp "sid    = " . Data::Dump::dump($sid);
+            carp "sid    = " . join( '\\', unpack '(H2)*', $sid );
             carp "string = $string";
         }
         return $string;
-    }
-
-    sub _string2sid {
-        my $string = shift;
-        my (@split) = split( m/\-/, $string );
-        my ( $prefix, $sid_rev, $auth_id, @ids ) = (@split);
-        if ( $auth_id != scalar(@ids) ) {
-            die "bad string: $string";
-        }
-
-        my $sid = pack( "C4", "$sid_rev", "$auth_id", 0, 0 );
-        $sid .= pack( "C4",
-            ( $auth_id & 0xff000000 ) >> 24,
-            ( $auth_id & 0x00ff0000 ) >> 16,
-            ( $auth_id & 0x0000ff00 ) >> 8,
-            $auth_id & 0x000000ff );
-
-        for my $i (@ids) {
-            $sid .= pack( "I", $i );
-        }
-        if ( $ENV{LDAP_DEBUG} ) {
-            carp "sid    = " . Data::Dump::dump($sid);
-            carp "string = $string";
-        }
-        return $sid;
     }
 
     sub _add_AD {
@@ -520,8 +522,11 @@ Only one user-level method is implemented: new().
 
                     # groups
                     $token_counter++;
-                    ( my $group_sid_str = $sid_str )
+                    ( my $group_sid_str = _get_server_sid_string() )
                         =~ s/-1234$/-$token_counter/;
+                    if ( $ENV{LDAP_DEBUG} ) {
+                        carp "group_sid_str = $group_sid_str";
+                    }
                     $entry->add( 'primaryGroupToken' => $token_counter );
                     $entry->add( 'objectSID'         => "$group_sid_str" );
                     $entry->add( 'distinguishedName' => $key );
@@ -531,8 +536,17 @@ Only one user-level method is implemented: new().
 
                     # users
                     my $gid = $entry->get_value('primaryGroupID');
-                    ( my $user_sid_str = $sid_str ) =~ s/-1234$/-$gid/;
+                    ( my $user_sid_str = _get_server_sid_string() )
+                        =~ s/-1234$/-$gid/;
+
                     my $user_sid = _string2sid($user_sid_str);
+
+                    if ( $ENV{LDAP_DEBUG} ) {
+                        carp "user_sid        = "
+                            . join( '\\', unpack '(H2)*', $user_sid );
+                        carp "user_sid_string = $user_sid_str";
+                    }
+
                     $entry->add( 'objectSID'         => $user_sid );
                     $entry->add( 'distinguishedName' => $key );
 
@@ -709,7 +723,7 @@ Only one user-level method is implemented: new().
                     }
                     my $pdu = $LDAPResponse->encode($response);
                     if ($pdu) {
-                        print { $socket } $pdu;
+                        print {$socket} $pdu;
                     }
                     else {
                         $result = undef;
@@ -734,7 +748,7 @@ Only one user-level method is implemented: new().
         }
 
         # and now send the result to the client
-        print { $socket } _encode_result( $mid, $respType, $result, $controls );
+        print {$socket} _encode_result( $mid, $respType, $result, $controls );
 
         return 0;
     }

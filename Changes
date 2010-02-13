@@ -34,4 +34,6 @@ Revision history for Net-LDAP-Server-Test
 
 0.09    xxx
         * wrap print to $socket handle in {} braces for perl 5.6.x
+        * rewrite _sid2string() and _string2sid() with better pack/unpack magic. Thanks
+          to David Lowe.
 
