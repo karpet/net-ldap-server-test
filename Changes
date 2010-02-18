@@ -32,7 +32,7 @@ Revision history for Net-LDAP-Server-Test
         * make debugging messages optional with LDAP_DEBUG env var
         * add support for Net::LDAP::Control (specifically, Net::LDAP::Control::Paged)
 
-0.09    xxx
+0.09    17 Feb 2010
         * wrap print to $socket handle in {} braces for perl 5.6.x
         * rewrite _sid2string() and _string2sid() with better pack/unpack magic. Thanks
           to David Lowe.
