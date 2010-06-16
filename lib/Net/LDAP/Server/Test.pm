@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 =head1 NAME
 
@@ -536,6 +536,7 @@ Only one user-level method is implemented: new().
 
                     # users
                     my $gid = $entry->get_value('primaryGroupID');
+                    $gid = '1234' unless ( defined $gid );
                     ( my $user_sid_str = _get_server_sid_string() )
                         =~ s/-1234$/-$gid/;
 
@@ -828,6 +829,8 @@ sub new {
             "cannot handle both 'data' and 'auto_schema' features. Pick one.";
     }
 
+    pipe( my $r_fh, my $w_fh );
+
     my $pid = fork();
 
     if ( !defined $pid ) {
@@ -835,15 +838,19 @@ sub new {
     }
     elsif ( $pid == 0 ) {
 
+        warn "Creating new LDAP server on port $port ... \n";
+
         # the child (server)
         my $sock = IO::Socket::INET->new(
             Listen    => 5,
             Proto     => 'tcp',
             Reuse     => 1,
             LocalPort => $port
-        );
+        ) or die "Unable to listen on port $port: $!";
 
-        warn "creating new LDAP server on port $port ... \n";
+        # tickle the pipe to show we've opened ok
+        syswrite $w_fh, "Ready\n";
+        undef $w_fh;
 
         my $sel = IO::Select->new($sock);
         my %Handlers;
@@ -884,16 +891,8 @@ sub new {
     }
     else {
 
-        # the parent (client).
-        # hesitate a little to account for slow fork()s since
-        # sleep() is not strictly portable.
-        #warn "starting nap at " . localtime() . "\n";
-        my $wait = time() + 2;
-        while ( time() < $wait ) {
-            1;
-        }
-
-        #warn "awake at " . localtime() . "\n";
+        return unless <$r_fh> =~ /Ready/;    # newline varies
+        close($r_fh);
         return bless( \$pid, $class );
     }
 

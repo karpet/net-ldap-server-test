@@ -37,3 +37,9 @@ Revision history for Net-LDAP-Server-Test
         * rewrite _sid2string() and _string2sid() with better pack/unpack magic. Thanks
           to David Lowe.
 
+0.10    15 June 2010
+        * ditch the pseudo-sleep() delay in forking child, instead using a pipe() check.
+          Patch from David Leadbeater via https://rt.cpan.org/Public/Bug/Display.html?id=56987
+        * quiet line noise when primaryGroupID not used. Patch from Ted Katseres via
+          https://rt.cpan.org/Public/Bug/Display.html?id=58337
+
