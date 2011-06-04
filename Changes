@@ -43,3 +43,5 @@ Revision history for Net-LDAP-Server-Test
         * quiet line noise when primaryGroupID not used. Patch from Ted Katseres via
           https://rt.cpan.org/Public/Bug/Display.html?id=58337
 
+0.11    04 June 2011
+        * fixes for Net::LDAP::Server 0.43, per patch from RT https://rt.cpan.org/Ticket/Display.html?id=68577

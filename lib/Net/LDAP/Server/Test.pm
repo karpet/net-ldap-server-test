@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 =head1 NAME
 
@@ -643,8 +643,16 @@ Only one user-level method is implemented: new().
 
     # override the default behaviour to support controls
     sub handle {
-        my Net::LDAP::Server $self = shift;
-        my $socket = $self->{socket};
+        my $self = shift;
+        my $socket;
+
+        #warn "$Net::LDAP::Server::VERSION";
+        if ( $Net::LDAP::Server::VERSION ge '0.43' ) {
+            $socket = $self->{in};
+        }
+        else {
+            $socket = $self->{socket};
+        }
 
         asn_read( $socket, my $pdu );
 
