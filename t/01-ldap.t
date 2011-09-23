@@ -63,6 +63,10 @@ $entry->add(
 );
 push @mydata, $entry;
 
+# RT 69615
+diag("stop() server");
+$server->stop();
+
 ok( $server = Net::LDAP::Server::Test->new( $opts{port}, data => \@mydata ),
     "spawn new server with our own data" );
 

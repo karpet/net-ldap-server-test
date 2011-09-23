@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 NAME
 
@@ -906,25 +906,21 @@ sub new {
 
 }
 
-=head2 DESTROY
+=head2 stop
 
-When a LDAP test server object is destroyed, waitpid() is called
-on the associated child process. Typically this is unnecessary, but
-implemented here as an exercise.
+Calls waitpid() on the server's associated child process.
+You may find it helpful to call this method explicitly,
+especially if you are creating multiple
+servers in the same test. Otherwise, this method is typically not
+needed and may even cause your tests to hang indefinitely if
+they die prematurely. YMMV.
 
 =cut
 
-sub DESTROY {
-    my $pid = ${ $_[0] };
-
-    #warn "DESTROYing a LDAP server with pid $pid";
-
-    # calling waitpid() here causes some tests to hang indefinitely if they
-    # die prematurely.
-    #my $epid = waitpid( $pid, 0 );
-
-    #carp "$pid [$epid] exited with value $?";
-
+sub stop {
+    my $server = shift;
+    my $pid    = $$server;
+    return waitpid( $pid, 0 );
 }
 
 =head1 AUTHOR
