@@ -71,6 +71,14 @@ Only one user-level method is implemented: new().
         'resultCode'   => LDAP_SUCCESS
     };
 
+    use constant OPERATIONS_ERROR => {
+        'matchedDN'    => '',
+        'errorMessage' => '',
+        'resultCode'   => LDAP_OPERATIONS_ERROR,
+    };
+
+    use constant TIMEOUT => 10;
+
     our %Data;    # package data lasts as long as $$ does.
     our $Cookies = 0;
     our %Searches;
@@ -130,6 +138,47 @@ Only one user-level method is implemented: new().
         my $base    = $reqData->{baseObject};
         my $scope   = $reqData->{scope} || 'sub';
         my @filters = ();
+
+        # plain die if dn contains 'dying' or filter
+        if ($base =~ /dying/
+            || (   $reqData->{filter}->{equalityMatch}
+                && $reqData->{filter}->{equalityMatch}->{assertionValue}
+                =~ /dying/ )
+            )
+        {
+            die("panic");
+        }
+
+        # return a correct LDAPresult, but an invalid entry
+        if ($base =~ /invalid_entry/
+            || (   $reqData->{filter}->{equalityMatch}
+                && $reqData->{filter}->{equalityMatch}->{assertionValue}
+                =~ /invalid_entry/ )
+            )
+        {
+            return ( RESULT_OK, { test => 1 } );
+        }
+
+        # return an invalid LDAPresult
+        if ($base =~ /invalid_result/
+            || (   $reqData->{filter}->{equalityMatch}
+                && $reqData->{filter}->{equalityMatch}->{assertionValue}
+                =~ /invalid_result/ )
+            )
+        {
+            return ( { test => 1 } );
+        }
+
+        # If base contains 'timeout' sleep for
+        # defined period before executing to simulate a timeout
+        if ($base =~ /timeout/
+            || (   $reqData->{filter}->{equalityMatch}
+                && $reqData->{filter}->{equalityMatch}->{assertionValue}
+                =~ /timeout/ )
+            )
+        {
+            sleep TIMEOUT;
+        }
 
         if ( $scope ne 'base' ) {
             if ( exists $reqData->{filter} ) {
@@ -395,24 +444,49 @@ Only one user-level method is implemented: new().
         #warn 'MODIFY: ' . Data::Dump::dump \@_;
 
         my $key = $reqData->{object};
+
         if ( !exists $Data{$key} ) {
             croak "can't modify a non-existent entry: $key";
         }
 
         my @mods = @{ $reqData->{modification} };
         for my $mod (@mods) {
-            my $attr  = $mod->{modification}->{type};
-            my $vals  = $mod->{modification}->{vals};
+
+            # warn 'MOD: ' . Data::Dump::dump $mod;
+            my $attr      = $mod->{modification}->{type};
+            my $vals      = $mod->{modification}->{vals};
+            my $operation = $mod->{operation};
+
             my $entry = $Data{$key};
-            $entry->replace( $attr => $vals );
+            if ( $operation == 1 ) {
+
+                # warn "Deleting $attr => " . Data::Dump::dump($vals)
+                #. " from " . $entry->dn;
+                $entry->delete( $attr => $vals );
+            }
+            elsif ( $operation == 2 ) {
+
+                # warn "Replacing $attr => " .
+                # Data::Dump::dump($vals) . " in " . $entry->dn;
+                $entry->replace( $attr => $vals );
+            }
+            elsif ( $operation == 0 ) {
+
+                # warn "Adding $attr => " .
+                # Data::Dump::dump($vals) . " to " . $entry->dn;
+                $entry->add( $attr => $vals );
+            }
+            else {
+                return OPERATIONS_ERROR;
+            }
         }
 
         if ( $self->{_flags}->{active_directory} ) {
             $self->_modify_AD( $reqData, $reqMsg, \%Data );
         }
 
+        #warn "stored Data: " . Data::Dump::dump \%Data;
         return RESULT_OK;
-
     }
 
     sub delete {
