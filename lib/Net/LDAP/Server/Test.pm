@@ -797,6 +797,8 @@ listing on I<port> and handling requests using Net::LDAP::Server.
 
 I<port> defaults to 10636.
 
+I<port> may be an IO::Socket::INET object listening to a local port.
+
 I<key_value_args> may be:
 
 =over
@@ -846,10 +848,10 @@ sub new {
     }
     elsif ( $pid == 0 ) {
 
-        warn "Creating new LDAP server on port $port ... \n" if $ENV{LDAP_DEBUG};
+        warn "Creating new LDAP server on port " . (ref $port ? $port->sockport : $port) . " ... \n" if $ENV{LDAP_DEBUG};
 
         # the child (server)
-        my $sock = IO::Socket::INET->new(
+        my $sock = ref $port ? $port : IO::Socket::INET->new(
             Listen    => 5,
             Proto     => 'tcp',
             Reuse     => 1,
