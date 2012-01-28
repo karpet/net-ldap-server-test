@@ -129,6 +129,7 @@ Only one user-level method is implemented: new().
         my @results;
         my $base    = $reqData->{baseObject};
         my $scope   = $reqData->{scope} || 'sub';
+        my @attrs   = @{$reqData->{attributes} || []};
         my @filters = ();
 
         if ( $scope ne 'base' ) {
@@ -217,7 +218,16 @@ Only one user-level method is implemented: new().
             if ( $match == scalar(@filters) ) {    # or $dn eq $base ) {
 
                 # clone the entry so that client cannot modify %Data
-                push( @results, $entry->clone );
+                my $result = $entry->clone;
+
+                # filter returned attributes to those requested
+                if (@attrs) {
+                    my %wanted = map { $_ => 1 } @attrs;
+                    $result->delete($_)
+                        for grep { not $wanted{$_} } $result->attributes;
+                }
+
+                push( @results, $result );
 
             }
         }
