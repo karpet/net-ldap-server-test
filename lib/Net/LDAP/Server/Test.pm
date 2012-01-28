@@ -79,7 +79,7 @@ Only one user-level method is implemented: new().
     sub new {
         my ( $class, $sock, %args ) = @_;
         my $self = $class->SUPER::new($sock);
-        warn sprintf "Accepted connection from: %s\n", $sock->peerhost();
+        warn sprintf "Accepted connection from: %s\n", $sock->peerhost() if $ENV{LDAP_DEBUG};
         $self->{_flags} = \%args;
         return $self;
     }
@@ -846,7 +846,7 @@ sub new {
     }
     elsif ( $pid == 0 ) {
 
-        warn "Creating new LDAP server on port $port ... \n";
+        warn "Creating new LDAP server on port $port ... \n" if $ENV{LDAP_DEBUG};
 
         # the child (server)
         my $sock = IO::Socket::INET->new(
@@ -885,7 +885,7 @@ sub new {
                         # if there are no open connections,
                         # exit the child process.
                         if ( !keys %Handlers ) {
-                            warn " ... shutting down server\n";
+                            warn " ... shutting down server\n" if $ENV{LDAP_DEBUG};
                             exit(0);
                         }
                     }
