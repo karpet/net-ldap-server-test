@@ -414,7 +414,18 @@ Only one user-level method is implemented: new().
             my $attr  = $mod->{modification}->{type};
             my $vals  = $mod->{modification}->{vals};
             my $entry = $Data{$key};
-            $entry->replace( $attr => $vals );
+            if ($mod->{operation} == 0) {
+                $entry->add( $attr => $vals );
+            }
+            elsif ($mod->{operation} == 1) {
+                $entry->delete( $attr => $vals );
+            }
+            elsif ($mod->{operation} == 2) {
+                $entry->replace( $attr => $vals );
+            }
+            else {
+                croak "unknown modify operation: $mod->{operation}";
+            }
         }
 
         if ( $self->{_flags}->{active_directory} ) {
