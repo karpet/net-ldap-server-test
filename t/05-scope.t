@@ -42,11 +42,7 @@ for my $scope (@scopes) {
         filter  => '(objectClass=group)',
     );
     ok $msg, "searched with scope $scope";
-    TODO: {
-        local $TODO = "scope of 'one' doesn't work with spaces in the DN (yet)"
-            if $scope eq 'one';
-        is $msg->count, $count, "found $count";
-    }
+    is $msg->count, $count, "found $count";
 }
 
 ok $ldap->unbind, "unbound";

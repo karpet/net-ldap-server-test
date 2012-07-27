@@ -55,6 +55,7 @@ Only one user-level method is implemented: new().
         LDAP_OPERATIONS_ERROR
         LDAP_UNWILLING_TO_PERFORM
     );
+    use Net::LDAP::Util qw(ldap_explode_dn);
     use Net::LDAP::Entry;
     use Net::LDAP::Filter;
     use Net::LDAP::FilterMatch;
@@ -199,7 +200,12 @@ Only one user-level method is implemented: new().
                 next unless $dn eq $base;
             }
             elsif ( $scope eq 'one' ) {
-                next unless $dn =~ m/^(\w+=\w+,)?$base$/;
+                my $dn_depth   = scalar @{ ldap_explode_dn($dn) };
+                my $base_depth = scalar @{ ldap_explode_dn($base) };
+
+                # If we're deeper, we're guaranteed to be under $base thanks to
+                # the m// above
+                next unless $dn eq $base or $dn_depth == $base_depth + 1;
             }
 
             my $entry = $Data{$dn};
