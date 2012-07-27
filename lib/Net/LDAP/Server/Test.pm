@@ -131,7 +131,7 @@ Only one user-level method is implemented: new().
         my @results;
         my $base    = $reqData->{baseObject};
         # $reqData->{scope} is a enum but we want a word
-        my $scope   = $Scopes[defined $reqData->{scope} ? $reqData->{scope} : 0];
+        my $scope   = $Scopes[defined $reqData->{scope} ? $reqData->{scope} : 2];
         my @attrs   = @{$reqData->{attributes} || []};
         my @filters = ();
 
