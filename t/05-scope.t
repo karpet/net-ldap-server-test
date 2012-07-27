@@ -18,24 +18,26 @@ my @scopes = qw(base one sub);
 my $dn = my $base = "dc=example,dc=com";
 for my $level (@scopes) {
     $dn = "cn=$level group,$dn";
-    $ldap->add(
+    my $result = $ldap->add(
         $dn,
         attr => [
             cn          => "$level group",
             objectClass => 'Group',
         ],
     );
+    ok !$result->code, "added $dn: " . $result->error;
 }
 
 # Do scopes work?
 my %expected = (
-    'base' => 1,
-    'one'  => 2,
-    'sub'  => 3,
+    'base' => [qw(base)],
+    'one'  => [qw(one)],
+    'sub'  => [qw(base one sub)],
 );
 
 for my $scope (@scopes) {
-    my $count = $expected{$scope};
+    my $cns = $expected{$scope};
+    my $count = scalar @$cns;
     my $msg = $ldap->search(
         base    => "cn=base group,$base",
         scope   => $scope,
@@ -43,6 +45,11 @@ for my $scope (@scopes) {
     );
     ok $msg, "searched with scope $scope";
     is $msg->count, $count, "found $count";
+
+    my %want  = map { ("$_ group" => 1) } @$cns;
+    my %found = map { ($_->get_value('cn') => 1) } $msg->entries;
+    is((scalar grep { !$found{$_} } keys %want), 0, "found all expected CNs");
+    is((scalar grep { !$want{$_} } keys %found), 0, "expected all found CNs");
 }
 
 ok $ldap->unbind, "unbound";

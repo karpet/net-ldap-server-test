@@ -201,9 +201,8 @@ Only one user-level method is implemented: new().
                 my $dn_depth   = scalar @{ ldap_explode_dn($dn) };
                 my $base_depth = scalar @{ ldap_explode_dn($base) };
 
-                # If we're deeper, we're guaranteed to be under $base thanks to
-                # the m// above
-                next unless $dn eq $base or $dn_depth == $base_depth + 1;
+                # We're guaranteed to be at or under $base thanks to the m// above
+                next unless $dn_depth == $base_depth + 1;
             }
 
             my $entry = $Data{$dn};
