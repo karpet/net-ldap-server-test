@@ -135,13 +135,11 @@ Only one user-level method is implemented: new().
         my @attrs   = @{$reqData->{attributes} || []};
         my @filters = ();
 
-        if ( $scope ne 'base' ) {
-            if ( exists $reqData->{filter} ) {
+        if ( exists $reqData->{filter} ) {
 
-                push( @filters,
-                    bless( $reqData->{filter}, 'Net::LDAP::Filter' ) );
+            push( @filters,
+                bless( $reqData->{filter}, 'Net::LDAP::Filter' ) );
 
-            }
         }
 
         #warn "stored Data: " . Data::Dump::dump \%Data;
@@ -223,7 +221,7 @@ Only one user-level method is implemented: new().
             }
 
             #warn "matched $match";
-            if ( $match == scalar(@filters) ) {    # or $dn eq $base ) {
+            if ( $match == scalar(@filters) ) {
 
                 # clone the entry so that client cannot modify %Data
                 my $result = $entry->clone;
