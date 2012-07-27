@@ -74,6 +74,7 @@ Only one user-level method is implemented: new().
     our %Data;    # package data lasts as long as $$ does.
     our $Cookies = 0;
     our %Searches;
+    my @Scopes = qw(base one sub);
 
     # constructor
     sub new {
@@ -128,7 +129,8 @@ Only one user-level method is implemented: new().
 
         my @results;
         my $base    = $reqData->{baseObject};
-        my $scope   = $reqData->{scope} || 'sub';
+        # $reqData->{scope} is a enum but we want a word
+        my $scope   = $Scopes[defined $reqData->{scope} ? $reqData->{scope} : 0];
         my @attrs   = @{$reqData->{attributes} || []};
         my @filters = ();
 
