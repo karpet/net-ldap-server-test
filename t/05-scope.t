@@ -50,6 +50,15 @@ for my $scope (@scopes) {
     my %found = map { ($_->get_value('cn') => 1) } $msg->entries;
     is((scalar grep { !$found{$_} } keys %want), 0, "found all expected CNs");
     is((scalar grep { !$want{$_} } keys %found), 0, "expected all found CNs");
+
+    # test that filters apply correctly on all scopes
+    $msg = $ldap->search(
+        base    => "cn=base group,$base",
+        scope   => $scope,
+        filter  => '(objectClass=404)',
+    );
+    ok $msg, "searched with scope $scope with a non-matching filter";
+    is $msg->count, 0, "found no entries";
 }
 
 ok $ldap->unbind, "unbound";
