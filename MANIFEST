@@ -8,6 +8,7 @@ t/01-ldap.t
 t/02-ad.t
 t/03-socket.t
 t/04attributes.t
+t/05-scope.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t

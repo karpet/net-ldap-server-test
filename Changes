@@ -55,3 +55,7 @@ Revision history for Net-LDAP-Server-Test
 
 0.13    17 April 2012
         * RT 76270 - attributes add/delete/replace 
+
+0.14    27 July 2012
+        * RT 78612 - search scope patch from Thomas Sibley
+
