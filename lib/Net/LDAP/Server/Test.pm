@@ -81,7 +81,8 @@ Only one user-level method is implemented: new().
     sub new {
         my ( $class, $sock, %args ) = @_;
         my $self = $class->SUPER::new($sock);
-        warn sprintf "Accepted connection from: %s\n", $sock->peerhost() if $ENV{LDAP_DEBUG};
+        warn sprintf "Accepted connection from: %s\n", $sock->peerhost()
+            if $ENV{LDAP_DEBUG};
         $self->{_flags} = \%args;
         return $self;
     }
@@ -129,10 +130,12 @@ Only one user-level method is implemented: new().
         #warn 'SEARCH SCHEMA: ' . Data::Dump::dump \@_;
 
         my @results;
-        my $base    = $reqData->{baseObject};
+        my $base = $reqData->{baseObject};
+
         # $reqData->{scope} is a enum but we want a word
-        my $scope   = $Scopes[defined $reqData->{scope} ? $reqData->{scope} : 2];
-        my @attrs   = @{$reqData->{attributes} || []};
+        my $scope
+            = $Scopes[ defined $reqData->{scope} ? $reqData->{scope} : 2 ];
+        my @attrs = @{ $reqData->{attributes} || [] };
         my @filters = ();
 
         if ( exists $reqData->{filter} ) {
@@ -201,7 +204,7 @@ Only one user-level method is implemented: new().
                 my $dn_depth   = scalar @{ ldap_explode_dn($dn) };
                 my $base_depth = scalar @{ ldap_explode_dn($base) };
 
-                # We're guaranteed to be at or under $base thanks to the m// above
+            # We're guaranteed to be at or under $base thanks to the m// above
                 next unless $dn_depth == $base_depth + 1;
             }
 
@@ -419,13 +422,13 @@ Only one user-level method is implemented: new().
             my $attr  = $mod->{modification}->{type};
             my $vals  = $mod->{modification}->{vals};
             my $entry = $Data{$key};
-            if ($mod->{operation} == 0) {
+            if ( $mod->{operation} == 0 ) {
                 $entry->add( $attr => $vals );
             }
-            elsif ($mod->{operation} == 1) {
+            elsif ( $mod->{operation} == 1 ) {
                 $entry->delete( $attr => $vals );
             }
-            elsif ($mod->{operation} == 2) {
+            elsif ( $mod->{operation} == 2 ) {
                 $entry->replace( $attr => $vals );
             }
             else {
@@ -874,7 +877,10 @@ sub new {
     }
     elsif ( $pid == 0 ) {
 
-        warn "Creating new LDAP server on port " . (ref $port ? $port->sockport : $port) . " ... \n" if $ENV{LDAP_DEBUG};
+        warn "Creating new LDAP server on port "
+            . ( ref $port ? $port->sockport : $port )
+            . " ... \n"
+            if $ENV{LDAP_DEBUG};
 
         # the child (server)
         my $sock = ref $port ? $port : IO::Socket::INET->new(
@@ -913,7 +919,8 @@ sub new {
                         # if there are no open connections,
                         # exit the child process.
                         if ( !keys %Handlers ) {
-                            warn " ... shutting down server\n" if $ENV{LDAP_DEBUG};
+                            warn " ... shutting down server\n"
+                                if $ENV{LDAP_DEBUG};
                             exit(0);
                         }
                     }

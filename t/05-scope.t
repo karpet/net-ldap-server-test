@@ -8,7 +8,8 @@ use Net::LDAP::Server::Test;
 
 my $port = 1024 + int rand(10000) + $$ % 1024;
 
-ok( my $server = Net::LDAP::Server::Test->new( $port, auto_schema => 1 ), "spawn new server" );
+ok( my $server = Net::LDAP::Server::Test->new( $port, auto_schema => 1 ),
+    "spawn new server" );
 ok( my $ldap = Net::LDAP->new("localhost:$port"), "new LDAP connection" );
 ok( my $rc = $ldap->bind(), "LDAP bind()" );
 
@@ -36,26 +37,28 @@ my %expected = (
 );
 
 for my $scope (@scopes) {
-    my $cns = $expected{$scope};
+    my $cns   = $expected{$scope};
     my $count = scalar @$cns;
-    my $msg = $ldap->search(
-        base    => "cn=base group,$base",
-        scope   => $scope,
-        filter  => '(objectClass=group)',
+    my $msg   = $ldap->search(
+        base   => "cn=base group,$base",
+        scope  => $scope,
+        filter => '(objectClass=group)',
     );
     ok $msg, "searched with scope $scope";
     is $msg->count, $count, "found $count";
 
-    my %want  = map { ("$_ group" => 1) } @$cns;
-    my %found = map { ($_->get_value('cn') => 1) } $msg->entries;
-    is((scalar grep { !$found{$_} } keys %want), 0, "found all expected CNs");
-    is((scalar grep { !$want{$_} } keys %found), 0, "expected all found CNs");
+    my %want  = map { ( "$_ group"          => 1 ) } @$cns;
+    my %found = map { ( $_->get_value('cn') => 1 ) } $msg->entries;
+    is( ( scalar grep { !$found{$_} } keys %want ),
+        0, "found all expected CNs" );
+    is( ( scalar grep { !$want{$_} } keys %found ),
+        0, "expected all found CNs" );
 
     # test that filters apply correctly on all scopes
     $msg = $ldap->search(
-        base    => "cn=base group,$base",
-        scope   => $scope,
-        filter  => '(objectClass=404)',
+        base   => "cn=base group,$base",
+        scope  => $scope,
+        filter => '(objectClass=404)',
     );
     ok $msg, "searched with scope $scope with a non-matching filter";
     is $msg->count, 0, "found no entries";
