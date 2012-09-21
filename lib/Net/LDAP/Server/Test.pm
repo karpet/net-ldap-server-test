@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
@@ -934,6 +934,9 @@ sub new {
     }
     else {
 
+        # this is the child
+        warn "child pid=$pid" if $ENV{LDAP_DEBUG};
+
         return unless <$r_fh> =~ /Ready/;    # newline varies
         close($r_fh);
         return bless( \$pid, $class );
@@ -950,12 +953,32 @@ servers in the same test. Otherwise, this method is typically not
 needed and may even cause your tests to hang indefinitely if
 they die prematurely. YMMV.
 
+To prevent waitpid() from blocking and hanging your test server,
+it is wrapped in an alarm() call, which will wait 2 seconds
+and then call kill() on the reluctant pid. You have been warned.
+
 =cut
 
 sub stop {
     my $server = shift;
     my $pid    = $$server;
-    return waitpid( $pid, 0 );
+    warn "\$pid = $pid" if $ENV{LDAP_DEBUG};
+    eval {
+        local $SIG{ALRM}
+            = sub { die "waitpid($pid, 0) took too long\n" }; # NB: \n required
+        alarm 2;
+        my $ret = waitpid( $pid, 0 );
+        warn "waitpid returned $ret" if $ENV{LDAP_DEBUG};
+        alarm 0;
+    };
+    if ($@) {
+        warn "$@";
+        kill( 1, $pid );
+    }
+    else {
+        warn "waitpid($pid, 0) worked" if $ENV{LDAP_DEBUG};
+    }
+    return $pid;
 }
 
 =head1 AUTHOR

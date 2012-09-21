@@ -59,3 +59,7 @@ Revision history for Net-LDAP-Server-Test
 0.14    27 July 2012
         * RT 78612 - search scope patch from Thomas Sibley
 
+0.15    21 Sept 2012
+        * RT 79776 - Net::LDAP >= 0.44 causes stop() to hang indefinitely. Added an alarm()
+          workaround to kill() the problem pid if waitpid() hangs.
+
