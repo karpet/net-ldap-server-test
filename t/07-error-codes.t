@@ -124,7 +124,7 @@ is( $mesg->code, LDAP_NO_SUCH_ATTRIBUTE, 'mod fails' );
 
 # Moddn ok
 $mesg = $ldap->moddn( 'msisdn=34699123456,app=test',
-    newrdn => 'msisdn=34699000111' );
+    newrdn => 'msisdn=34699000111', deleteoldrdn => 1 );
 is( $mesg->code, LDAP_SUCCESS, 'moddn ok' );
 
 # Moddn on a non-existing entry should return 32
