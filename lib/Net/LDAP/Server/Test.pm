@@ -51,6 +51,7 @@ Only one user-level method is implemented: new().
     use Carp;
     use Net::LDAP::Constant qw(
         LDAP_SUCCESS
+        LDAP_NO_SUCH_OBJECT
         LDAP_CONTROL_PAGED
         LDAP_OPERATIONS_ERROR
         LDAP_UNWILLING_TO_PERFORM
@@ -143,6 +144,15 @@ Only one user-level method is implemented: new().
             push( @filters,
                 bless( $reqData->{filter}, 'Net::LDAP::Filter' ) );
 
+        }
+
+        # Return LDAP_NO_SUCH_OBJECT if base does not exist
+        unless ( exists $Data{$base} ) {
+            return {
+                matchedDN    => '',
+                errorMessage => 'No such object: ' . $base,
+                resultCode   => LDAP_NO_SUCH_OBJECT
+            };
         }
 
         #warn "stored Data: " . Data::Dump::dump \%Data;
