@@ -9,6 +9,8 @@ t/02-ad.t
 t/03-socket.t
 t/04attributes.t
 t/05-scope.t
+t/06-no-such-entry.t
+t/07-error-codes.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
