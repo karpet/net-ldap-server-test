@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.15_02';
+our $VERSION = '0.16';
 
 =head1 NAME
 
