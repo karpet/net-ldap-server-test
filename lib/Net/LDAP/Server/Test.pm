@@ -525,9 +525,6 @@ Only one user-level method is implemented: new().
         else {
             # As we only have the new relative DN, we still
             # need the base for it. We'll take it from $oldkey
-            # This is somehow hackish, as the code of Net::LDAP
-            # always define newSuperior in moddn operations and 
-            # it seems that it should always be defined
             my $exploded_dn = ldap_explode_dn($oldkey, casefold => 'none');
             shift @$exploded_dn;
             $newkey .= ',' . canonical_dn($exploded_dn, casefold => 'none');
