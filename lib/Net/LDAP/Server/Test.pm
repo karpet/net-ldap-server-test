@@ -55,6 +55,9 @@ Only one user-level method is implemented: new().
         LDAP_CONTROL_PAGED
         LDAP_OPERATIONS_ERROR
         LDAP_UNWILLING_TO_PERFORM
+        LDAP_ALREADY_EXISTS
+        LDAP_TYPE_OR_VALUE_EXISTS
+        LDAP_NO_SUCH_ATTRIBUTE
     );
     use Net::LDAP::Util qw(ldap_explode_dn);
     use Net::LDAP::Entry;
@@ -71,6 +74,30 @@ Only one user-level method is implemented: new().
         'matchedDN'    => '',
         'errorMessage' => '',
         'resultCode'   => LDAP_SUCCESS
+    };
+
+    use constant RESULT_NO_SUCH_OBJECT => {
+        'matchedDN'    => '',
+        'errorMessage' => '',
+        'resultCode'   => LDAP_NO_SUCH_OBJECT,
+    };
+
+    use constant RESULT_ALREADY_EXISTS => {
+        'matchedDN'    => '',
+        'errorMessage' => '',
+        'resultCode'   => LDAP_ALREADY_EXISTS,
+    };
+
+    use constant RESULT_TYPE_OR_VALUE_EXISTS => {
+        'matchedDN'    => '',
+        'errorMessage' => '',
+        'resultCode'   => LDAP_TYPE_OR_VALUE_EXISTS,
+    };
+
+    use constant RESULT_NO_SUCH_ATTRIBUTE => {
+        'matchedDN'    => '',
+        'errorMessage' => '',
+        'resultCode'   => LDAP_NO_SUCH_ATTRIBUTE,
     };
 
     our %Data;    # package data lasts as long as $$ does.
@@ -140,7 +167,6 @@ Only one user-level method is implemented: new().
         my @filters = ();
 
         if ( exists $reqData->{filter} ) {
-
             push( @filters,
                 bless( $reqData->{filter}, 'Net::LDAP::Filter' ) );
 
@@ -148,11 +174,7 @@ Only one user-level method is implemented: new().
 
         # Return LDAP_NO_SUCH_OBJECT if base does not exist
         unless ( exists $Data{$base} ) {
-            return {
-                matchedDN    => '',
-                errorMessage => 'No such object: ' . $base,
-                resultCode   => LDAP_NO_SUCH_OBJECT
-            };
+            return RESULT_NO_SUCH_OBJECT;
         }
 
         #warn "stored Data: " . Data::Dump::dump \%Data;
@@ -401,8 +423,12 @@ Only one user-level method is implemented: new().
 
         #warn 'ADD: ' . Data::Dump::dump \@_;
 
+        my $key = $reqData->{objectName};
+        if ( exists $Data{$key} ) {
+            return RESULT_ALREADY_EXISTS;
+        }
+
         my $entry = Net::LDAP::Entry->new;
-        my $key   = $reqData->{objectName};
         $entry->dn($key);
         for my $attr ( @{ $reqData->{attributes} } ) {
             $entry->add( $attr->{type} => \@{ $attr->{vals} } );
@@ -424,7 +450,7 @@ Only one user-level method is implemented: new().
 
         my $key = $reqData->{object};
         if ( !exists $Data{$key} ) {
-            croak "can't modify a non-existent entry: $key";
+            return RESULT_NO_SUCH_OBJECT;
         }
 
         my @mods = @{ $reqData->{modification} };
@@ -432,10 +458,24 @@ Only one user-level method is implemented: new().
             my $attr  = $mod->{modification}->{type};
             my $vals  = $mod->{modification}->{vals};
             my $entry = $Data{$key};
+
+            my $current_value = $entry->get_value( $attr, asref => 1 );
+
             if ( $mod->{operation} == 0 ) {
+                if ( defined $current_value ) {
+                    for my $v (@$current_value) {
+                        if ( grep { $_ eq $v } @$vals ) {
+                            return RESULT_TYPE_OR_VALUE_EXISTS;
+                        }
+                    }
+                }
+
                 $entry->add( $attr => $vals );
             }
             elsif ( $mod->{operation} == 1 ) {
+                if ( !defined $current_value ) {
+                    return RESULT_NO_SUCH_ATTRIBUTE;
+                }
                 $entry->delete( $attr => $vals );
             }
             elsif ( $mod->{operation} == 2 ) {
@@ -461,7 +501,7 @@ Only one user-level method is implemented: new().
 
         my $key = $reqData;
         if ( !exists $Data{$key} ) {
-            croak "can't delete a non-existent entry: $key";
+            return RESULT_NO_SUCH_OBJECT;
         }
         delete $Data{$key};
 
@@ -473,11 +513,19 @@ Only one user-level method is implemented: new().
         my ( $self, $reqData, $reqMsg ) = @_;
 
         #warn "modifyDN: " . Data::Dump::dump \@_;
+        #warn "modifyDN: " . Data::Dump::dump($reqData);
+        #warn "existing: " . Data::Dump::dump( \%Data );
 
         my $oldkey = $reqData->{entry};
-        my $newkey = join( ',', $reqData->{newrdn}, $reqData->{newSuperior} );
+        my $newkey = $reqData->{newrdn};
+        if ( exists $reqData->{newSuperior} ) {
+            $newkey .= ',' . $reqData->{newSuperior};
+        }
         if ( !exists $Data{$oldkey} ) {
-            croak "can't modifyDN for non-existent entry: $oldkey";
+            return RESULT_NO_SUCH_OBJECT;
+        }
+        if ( exists $Data{$newkey} ) {
+            return RESULT_ALREADY_EXISTS;
         }
         my $entry    = $Data{$oldkey};
         my $newentry = $entry->clone;
