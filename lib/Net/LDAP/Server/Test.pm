@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.15_01';
+our $VERSION = '0.15_02';
 
 =head1 NAME
 
@@ -59,7 +59,7 @@ Only one user-level method is implemented: new().
         LDAP_TYPE_OR_VALUE_EXISTS
         LDAP_NO_SUCH_ATTRIBUTE
     );
-    use Net::LDAP::Util qw(ldap_explode_dn);
+    use Net::LDAP::Util qw(ldap_explode_dn canonical_dn);
     use Net::LDAP::Entry;
     use Net::LDAP::Filter;
     use Net::LDAP::FilterMatch;
@@ -515,12 +515,24 @@ Only one user-level method is implemented: new().
         #warn "modifyDN: " . Data::Dump::dump \@_;
         #warn "modifyDN: " . Data::Dump::dump($reqData);
         #warn "existing: " . Data::Dump::dump( \%Data );
+        #warn "existing DNs: " . Data::Dump::dump([keys %Data]);
 
         my $oldkey = $reqData->{entry};
         my $newkey = $reqData->{newrdn};
-        if ( exists $reqData->{newSuperior} ) {
+        if ( defined $reqData->{newSuperior} ) {
             $newkey .= ',' . $reqData->{newSuperior};
         }
+        else {
+            # As we only have the new relative DN, we still
+            # need the base for it. We'll take it from $oldkey
+            # This is somehow hackish, as the code of Net::LDAP
+            # always define newSuperior in moddn operations and 
+            # it seems that it should always be defined
+            my $exploded_dn = ldap_explode_dn($oldkey, casefold => 'none');
+            shift @$exploded_dn;
+            $newkey .= ',' . canonical_dn($exploded_dn, casefold => 'none');
+        }
+
         if ( !exists $Data{$oldkey} ) {
             return RESULT_NO_SUCH_OBJECT;
         }
