@@ -5,6 +5,16 @@ use Net::LDAP::Server::Test;
 use Net::LDAP;
 use Net::LDAP::LDIF;
 use File::Temp qw(tempfile);
+use Net::LDAP::Constant qw(
+    LDAP_SUCCESS
+    LDAP_NO_SUCH_OBJECT
+    LDAP_CONTROL_PAGED
+    LDAP_OPERATIONS_ERROR
+    LDAP_UNWILLING_TO_PERFORM
+    LDAP_ALREADY_EXISTS
+    LDAP_TYPE_OR_VALUE_EXISTS
+    LDAP_NO_SUCH_ATTRIBUTE
+);
 
 # Create ldif
 my $ldif_entries = <<EOL;
@@ -30,8 +40,11 @@ ok( my $ldap = Net::LDAP->new( 'localhost', port => 12389 ),
     "new LDAP connection" );
 
 # Load ldif
-my $ldif = Net::LDAP::LDIF->new( $filename, 'r', onerror => 'die',
-    lowercase => 1 );
+my $ldif = Net::LDAP::LDIF->new(
+    $filename, 'r',
+    onerror   => 'die',
+    lowercase => 1
+);
 while ( not $ldif->eof ) {
     my $entry = $ldif->read_entry or die "Unable to parse entry";
     my $mesg = $ldap->add($entry);
@@ -47,7 +60,7 @@ my $mesg = $ldap->search(
     scope  => 'base',
     filter => 'objectClass=*'
 );
-is( $mesg->code, 0, 'msisdn found' );
+is( $mesg->code, LDAP_SUCCESS, 'msisdn found' );
 
 # This should work. A base search to a non-existing entry should return 32
 $mesg = $ldap->search(
@@ -55,7 +68,7 @@ $mesg = $ldap->search(
     scope  => 'base',
     filter => 'objectClass=*'
 );
-is( $mesg->code,              32, 'msisdn not found' );
-is( scalar( $mesg->entries ), 0,  'number of entries equals zero' );
+is( $mesg->code, LDAP_NO_SUCH_OBJECT, 'msisdn not found' );
+is( scalar( $mesg->entries ), 0, 'number of entries equals zero' );
 
 done_testing;

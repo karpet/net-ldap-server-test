@@ -69,3 +69,7 @@ Revision history for Net-LDAP-Server-Test
         * RT 80377 - return correct LDAP constant for variety of conditions.
           Patches from Rafael Porres Molina.
 
+0.17    2 Feb 2013
+        * fix regression introduced in 0.16 via 4896a0418ecf704723d91b9d8efae662c0260e79
+          (issue RT 80360)
+

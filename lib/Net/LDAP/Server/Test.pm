@@ -7,7 +7,7 @@ use IO::Select;
 use IO::Socket;
 use Data::Dump ();
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 =head1 NAME
 
@@ -172,13 +172,11 @@ Only one user-level method is implemented: new().
 
         }
 
-        # Return LDAP_NO_SUCH_OBJECT if base does not exist
-        unless ( exists $Data{$base} ) {
-            return RESULT_NO_SUCH_OBJECT;
+        if ( $ENV{LDAP_DEBUG} ) {
+            warn "search for '$base' with scope '$scope' in Data: "
+                . Data::Dump::dump \%Data;
+            warn "filters: " . Data::Dump::dump \@filters;
         }
-
-        #warn "stored Data: " . Data::Dump::dump \%Data;
-        #warn "searching for " . Data::Dump::dump \@filters;
 
         # support paged results
         my ( $page_size, $cookie, $controls, $offset );
@@ -242,7 +240,9 @@ Only one user-level method is implemented: new().
 
             my $entry = $Data{$dn};
 
-            #warn "trying to match $dn : " . Data::Dump::dump $entry;
+            if ( $ENV{LDAP_DEBUG} ) {
+                warn "trying to match $dn : " . Data::Dump::dump $entry;
+            }
 
             my $match = 0;
             for my $filter (@filters) {
@@ -288,6 +288,10 @@ Only one user-level method is implemented: new().
             if ($page_size) {
                 warn "page_size == $page_size  offset == $offset\n";
             }
+        }
+
+        if ( $scope eq 'base' and $total_found == 0 ) {
+            return RESULT_NO_SUCH_OBJECT;
         }
 
         if ( $page_size && $offset > $#results ) {
@@ -421,9 +425,12 @@ Only one user-level method is implemented: new().
     sub add {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'ADD: ' . Data::Dump::dump \@_;
-
         my $key = $reqData->{objectName};
+        if ( $ENV{LDAP_DEBUG} ) {
+            warn 'ADD: ' . Data::Dump::dump \@_;
+            warn "key: $key";
+        }
+
         if ( exists $Data{$key} ) {
             return RESULT_ALREADY_EXISTS;
         }
@@ -446,7 +453,9 @@ Only one user-level method is implemented: new().
     sub modify {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'MODIFY: ' . Data::Dump::dump \@_;
+        if ( $ENV{LDAP_DEBUG} ) {
+            warn 'MODIFY: ' . Data::Dump::dump \@_;
+        }
 
         my $key = $reqData->{object};
         if ( !exists $Data{$key} ) {
@@ -497,7 +506,9 @@ Only one user-level method is implemented: new().
     sub delete {
         my ( $self, $reqData, $reqMsg ) = @_;
 
-        #warn 'DELETE: ' . Data::Dump::dump \@_;
+        if ( $ENV{LDAP_DEBUG} ) {
+            warn 'DELETE: ' . Data::Dump::dump \@_;
+        }
 
         my $key = $reqData;
         if ( !exists $Data{$key} ) {
@@ -525,9 +536,9 @@ Only one user-level method is implemented: new().
         else {
             # As we only have the new relative DN, we still
             # need the base for it. We'll take it from $oldkey
-            my $exploded_dn = ldap_explode_dn($oldkey, casefold => 'none');
+            my $exploded_dn = ldap_explode_dn( $oldkey, casefold => 'none' );
             shift @$exploded_dn;
-            $newkey .= ',' . canonical_dn($exploded_dn, casefold => 'none');
+            $newkey .= ',' . canonical_dn( $exploded_dn, casefold => 'none' );
         }
 
         if ( !exists $Data{$oldkey} ) {
