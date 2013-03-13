@@ -1051,7 +1051,8 @@ sub stop {
     };
     if ($@) {
         warn "$@";
-        kill( 1, $pid );
+        my $cnt = kill( 9, $pid );
+        warn "kill(9,$pid) returned $cnt\n";
     }
     else {
         warn "waitpid($pid, 0) worked" if $ENV{LDAP_DEBUG};
