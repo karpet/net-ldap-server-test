@@ -73,3 +73,7 @@ Revision history for Net-LDAP-Server-Test
         * fix regression introduced in 0.16 via 4896a0418ecf704723d91b9d8efae662c0260e79
           (issue RT 80360)
 
+0.18    14 March 2013
+        * RT 83905 - server->stop() with waitpid+kill may take a second or two to work,
+          so check+sleep for 10 seconds before returning.
+
