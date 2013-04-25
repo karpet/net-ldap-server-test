@@ -31,3 +31,6 @@ ok( my $server = Net::LDAP::Server::Test->new( $socket ),
     "spawn new server with socket passed" );
 
 ok( my $ldap = Net::LDAP->new( $host, %opts, ), "new LDAP connection" );
+
+diag("stop() server");
+$server->stop();
