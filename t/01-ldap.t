@@ -28,7 +28,12 @@ ok( my $server = Net::LDAP::Server::Test->new( $opts{port} ),
 ok( my $ldap = Net::LDAP->new( $host, %opts, ), "new LDAP connection" );
 
 unless ($ldap) {
-    croak "Unable to connect to LDAP server $host: $@";
+    my $error = $@;
+    if ($server) {
+        diag("stop() server");
+        $server->stop();
+    }
+    croak "Unable to connect to LDAP server $host: $error";
 }
 
 ok( my $rc = $ldap->bind(), "LDAP bind()" );
