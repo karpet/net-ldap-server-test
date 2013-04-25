@@ -41,7 +41,7 @@ WriteMakefile(
                     bugtracker =>
                         'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Net-LDAP-Server-Test',
                     repository =>
-                        'git@github.com:karpet/net-ldap-server-test.git',
+                        'https://github.com/karpet/net-ldap-server-test',
                 },
             }
             )
