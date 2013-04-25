@@ -39,6 +39,13 @@ ok( my $server = Net::LDAP::Server::Test->new( 12389, auto_schema => 1 ),
 ok( my $ldap = Net::LDAP->new( 'localhost', port => 12389 ),
     "new LDAP connection" );
 
+unless ($ldap) {
+    my $error = $@;
+    diag("stop() server");
+    $server->stop();
+    croak "Unable to connect to LDAP server $host: $error";
+}
+
 # Load ldif
 my $ldif = Net::LDAP::LDIF->new(
     $filename, 'r',
