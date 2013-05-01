@@ -1,16 +1,19 @@
+#!/usr/bin/env perl
+
 use strict;
 use warnings;
-
+use Carp;
 use Test::More;
 
 use Net::LDAP;
 use Net::LDAP::Server::Test;
 
 my $port = 1024 + int rand(10000) + $$ % 1024;
+my $host = 'ldap://localhost:' . $port;
 
 ok( my $server = Net::LDAP::Server::Test->new( $port, auto_schema => 1 ),
     "spawn new server" );
-ok( my $ldap = Net::LDAP->new("localhost:$port"), "new LDAP connection" );
+ok( my $ldap = Net::LDAP->new($host), "new LDAP connection" );
 
 unless ($ldap) {
     my $error = $@;
