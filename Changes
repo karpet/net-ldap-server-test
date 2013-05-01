@@ -77,3 +77,6 @@ Revision history for Net-LDAP-Server-Test
         * RT 83905 - server->stop() with waitpid+kill may take a second or two to work,
           so check+sleep for 10 seconds before returning.
 
+0.19    30 April 2013
+        * patches from chorny @github patching Windows hanging bug (RT #84836)
+
