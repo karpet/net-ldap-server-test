@@ -1,5 +1,8 @@
 Revision history for Net-LDAP-Server-Test
 
+0.20 01 July 2016
+ - use Net::LDAP::SID instead of custom methods
+
 0.19 30 April 2013
  - patches from chorny @github patching Windows hanging bug (RT #84836)
 
