@@ -1,4 +1,4 @@
-use Test::More tests => 9;
+use Test::More tests => 6;
 
 use strict;
 use warnings;
@@ -58,12 +58,6 @@ foreach my $entry ( $mesg->entries ) {
 }
 
 is( $count, 13, "$count entries found in search" );
-
-# test our SID utility functions
-ok( my $server_sid_string = MyLDAPServer::_get_server_sid_string(),
-    "get server sid" );
-ok( my $sid = MyLDAPServer::_string2sid($server_sid_string), "string2sid" );
-is( $server_sid_string, MyLDAPServer::_sid2string($sid), "sid2string" );
 
 # quit
 ok( $mesg = $ldap->unbind, "LDAP unbind()" );

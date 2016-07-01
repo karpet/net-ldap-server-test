@@ -22,6 +22,7 @@ WriteMakefile(
         'IO::Select'        => 0,
         'Net::LDAP::Server' => '0.3',
         'Net::LDAP'         => 0,
+        'Net::LDAP::SID'    => 0,
         'Data::Dump'        => 0,
 
     },

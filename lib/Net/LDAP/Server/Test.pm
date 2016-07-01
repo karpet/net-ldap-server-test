@@ -6,6 +6,7 @@ use Carp;
 use IO::Select;
 use IO::Socket;
 use Data::Dump ();
+use Net::LDAP::SID;
 
 our $VERSION = '0.19';
 
@@ -583,43 +584,6 @@ Only one user-level method is implemented: new().
 
     sub _get_server_sid_string { return $sid_str }
 
-    sub _string2sid {
-        my ($string) = @_;
-
-        my ( undef, $revision_level, $authority, @sub_authorities )
-            = split /-/, $string;
-        my $sub_authority_count = scalar @sub_authorities;
-
-        my $sid = pack 'C Vxx C V*', $revision_level, $authority,
-            $sub_authority_count, @sub_authorities;
-
-        if ( $ENV{LDAP_DEBUG} ) {
-            carp "sid    = " . join( '\\', unpack '(H2)*', $sid );
-            carp "string = $string";
-        }
-
-        return $sid;
-    }
-
-    sub _sid2string {
-        my ($sid) = @_;
-
-        my ($revision_level,      $authority,
-            $sub_authority_count, @sub_authorities
-        ) = unpack 'C Vxx C V*', $sid;
-
-        die if $sub_authority_count != scalar @sub_authorities;
-
-        my $string = join '-', 'S', $revision_level, $authority,
-            @sub_authorities;
-
-        if ( $ENV{LDAP_DEBUG} ) {
-            carp "sid    = " . join( '\\', unpack '(H2)*', $sid );
-            carp "string = $string";
-        }
-        return $string;
-    }
-
     sub _add_AD {
         my ( $server, $reqData, $reqMsg, $key, $entry, $data ) = @_;
 
@@ -647,15 +611,8 @@ Only one user-level method is implemented: new().
                     ( my $user_sid_str = _get_server_sid_string() )
                         =~ s/-1234$/-$gid/;
 
-                    my $user_sid = _string2sid($user_sid_str);
-
-                    if ( $ENV{LDAP_DEBUG} ) {
-                        carp "user_sid        = "
-                            . join( '\\', unpack '(H2)*', $user_sid );
-                        carp "user_sid_string = $user_sid_str";
-                    }
-
-                    $entry->add( 'objectSID'         => $user_sid );
+                    my $user_sid = Net::LDAP::SID->new($user_sid_str);
+                    $entry->add( 'objectSID'         => $user_sid->as_binary );
                     $entry->add( 'distinguishedName' => $key );
 
                 }
