@@ -23,7 +23,7 @@ Net::LDAP::Server::Test - test Net::LDAP code
             "test LDAP server spawned");
     
     # connect to port 8080 with your Net::LDAP code.
-    ok(my $ldap = Net::LDAP->new( 'localhost', port => 8080 ),
+    ok(my $ldap = Net::LDAP->new( '127.0.0.1', port => 8080 ),
              "new LDAP connection" );
              
     # ... test stuff with $ldap ...
