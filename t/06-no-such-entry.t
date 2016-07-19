@@ -37,7 +37,7 @@ print $fh $ldif_entries;
 close $fh;
 
 my $port = '12389';
-my $host = 'ldap://localhost:' . $port;
+my $host = 'ldap://127.0.0.1:' . $port;
 
 # Create and connect to server
 ok( my $server = Net::LDAP::Server::Test->new( $port, auto_schema => 1 ),

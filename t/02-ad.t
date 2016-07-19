@@ -19,7 +19,7 @@ my %opts = (
 
 );
 
-my $host = 'ldap://localhost:' . $opts{port};
+my $host = 'ldap://127.0.0.1:' . $opts{port};
 
 #
 #   TODO front-load real AD data with schema.

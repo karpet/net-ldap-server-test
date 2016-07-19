@@ -14,7 +14,7 @@ use Net::LDAP::Entry;
 
 my %opts = (port => '10636');
 
-my $host = 'ldap://localhost:' . $opts{port};
+my $host = 'ldap://127.0.0.1:' . $opts{port};
 
 ok( my $server = Net::LDAP::Server::Test->new( $opts{port}, auto_schema => 1 ),
     "spawn new server" );

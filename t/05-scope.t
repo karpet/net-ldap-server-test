@@ -9,7 +9,7 @@ use Net::LDAP;
 use Net::LDAP::Server::Test;
 
 my $port = 1024 + int rand(10000) + $$ % 1024;
-my $host = 'ldap://localhost:' . $port;
+my $host = 'ldap://127.0.0.1:' . $port;
 
 ok( my $server = Net::LDAP::Server::Test->new( $port, auto_schema => 1 ),
     "spawn new server" );
