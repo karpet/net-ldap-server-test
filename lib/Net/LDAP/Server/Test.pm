@@ -861,7 +861,7 @@ listing on I<port> and handling requests using Net::LDAP::Server.
 
 I<port> defaults to 10636.
 
-I<port> may be an IO::Socket::INET object listening to a local port.
+I<port> may be an IO::Socket object listening to a local port.
 
 I<key_value_args> may be:
 
@@ -895,6 +895,18 @@ blessed reference to the PID of the forked server.
 
 my %PORTS;    # inside-out tracking of port-per-server
 
+# this snippet matches what Net::LDAP does:
+# check for IPv6 support: prefer IO::Socket::IP 0.20+ over IO::Socket::INET6
+use constant CAN_IPV6 => do {
+                           local $SIG{__DIE__};
+
+                           eval { require IO::Socket::IP; IO::Socket::IP->VERSION(0.20); }
+                           ? 'IO::Socket::IP'
+                           : eval { require IO::Socket::INET6; }
+                             ? 'IO::Socket::INET6'
+                             : '';
+                         };
+
 sub new {
     my $class = shift;
     my $port  = shift || 10636;
@@ -920,7 +932,8 @@ sub new {
             if $ENV{LDAP_DEBUG};
 
         # the child (server)
-        my $sock = ref $port ? $port : IO::Socket::INET->new(
+        my $class = (CAN_IPV6 ? CAN_IPV6 : 'IO::Socket::INET');
+        my $sock = ref $port ? $port : $class->new(
             Listen    => 5,
             Proto     => 'tcp',
             Reuse     => 1,
@@ -1032,7 +1045,7 @@ sub stop {
 
 =head2 port_is_open
 
-Returns IO::Socket::INET->new for the current server port.
+Returns an IO::Socket (or subclass) for the current server port.
 If the port is already in use, this is a false value.
 
 =cut
@@ -1040,8 +1053,10 @@ If the port is already in use, this is a false value.
 sub port_is_open {
     my $self = shift;
     my $port = $PORTS{"$self"};
-    return IO::Socket::INET->new(
-        PeerAddr => '127.0.0.1',
+
+    my $class = (CAN_IPV6 ? CAN_IPV6 : 'IO::Socket::INET');
+    return $class->new(
+        PeerAddr => 'localhost',
         PeerPort => $port,
         Proto    => 'tcp',
         Type     => SOCK_STREAM,
