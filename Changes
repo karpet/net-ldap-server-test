@@ -1,5 +1,8 @@
 Revision history for Net-LDAP-Server-Test
 
+0.21 19 July 2016
+ - fix for INET6 via Shawn Moore https://rt.cpan.org/Ticket/Display.html?id=116304
+
 0.20 01 July 2016
  - use Net::LDAP::SID instead of custom methods
 
