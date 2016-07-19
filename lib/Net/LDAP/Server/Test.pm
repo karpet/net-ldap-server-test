@@ -3,8 +3,8 @@ package Net::LDAP::Server::Test;
 use warnings;
 use strict;
 use Carp;
-use IO::Select;
 use IO::Socket;
+use IO::Select;
 use Data::Dump ();
 use Net::LDAP::SID;
 
@@ -612,7 +612,7 @@ Only one user-level method is implemented: new().
                         =~ s/-1234$/-$gid/;
 
                     my $user_sid = Net::LDAP::SID->new($user_sid_str);
-                    $entry->add( 'objectSID'         => $user_sid->as_binary );
+                    $entry->add( 'objectSID' => $user_sid->as_binary );
                     $entry->add( 'distinguishedName' => $key );
 
                 }
@@ -898,14 +898,12 @@ my %PORTS;    # inside-out tracking of port-per-server
 # this snippet matches what Net::LDAP does:
 # check for IPv6 support: prefer IO::Socket::IP 0.20+ over IO::Socket::INET6
 use constant CAN_IPV6 => do {
-                           local $SIG{__DIE__};
+    local $SIG{__DIE__};
 
-                           eval { require IO::Socket::IP; IO::Socket::IP->VERSION(0.20); }
-                           ? 'IO::Socket::IP'
-                           : eval { require IO::Socket::INET6; }
-                             ? 'IO::Socket::INET6'
-                             : '';
-                         };
+    eval { require IO::Socket::INET6; }
+        ? 'IO::Socket::INET6'
+        : '';
+};
 
 sub new {
     my $class = shift;
@@ -932,13 +930,13 @@ sub new {
             if $ENV{LDAP_DEBUG};
 
         # the child (server)
-        my $class = (CAN_IPV6 ? CAN_IPV6 : 'IO::Socket::INET');
+        my $class = _io_socket_class();
         my $sock = ref $port ? $port : $class->new(
             Listen    => 5,
             Proto     => 'tcp',
             Reuse     => 1,
             LocalPort => $port
-        ) or die "Unable to listen on port $port: $!";
+        ) or die "Unable to listen on port $port: $! [$@]";
 
         # tickle the pipe to show we've opened ok
         syswrite $w_fh, "Ready\n";
@@ -1052,15 +1050,18 @@ If the port is already in use, this is a false value.
 
 sub port_is_open {
     my $self = shift;
-    my $port = $PORTS{"$self"};
+    my $port = shift || $PORTS{"$self"};
 
-    my $class = (CAN_IPV6 ? CAN_IPV6 : 'IO::Socket::INET');
-    return $class->new(
+    return _io_socket_class()->new(
         PeerAddr => 'localhost',
         PeerPort => $port,
         Proto    => 'tcp',
         Type     => SOCK_STREAM,
     );
+}
+
+sub _io_socket_class {
+    return CAN_IPV6 ? CAN_IPV6 : 'IO::Socket::INET';
 }
 
 =head1 AUTHOR
