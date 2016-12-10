@@ -8,7 +8,7 @@ use IO::Select;
 use Data::Dump ();
 use Net::LDAP::SID;
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 
 =head1 NAME
 

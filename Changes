@@ -1,5 +1,8 @@
 Revision history for Net-LDAP-Server-Test
 
+0.22 10 Dec 2016
+ - missing from CPAN. No code changes, just re-release of 0.21 with version bump.
+
 0.21 19 July 2016
  - fix for INET6 via Shawn Moore https://rt.cpan.org/Ticket/Display.html?id=116304
 
